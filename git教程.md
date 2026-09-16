@@ -16,17 +16,17 @@
 
 ## 学习进度表
 
-| 阶段 | 主题 | 状态 |
-|---|---|---|
-| 0 | 环境与身份（version / config） | 完成 |
-| 1 | 第一次提交（init / status / add / commit / log） | 进行中 |
-| 2 | 日常循环（改文件再提交） | 未开始 |
-| 3 | 后悔药（restore / amend / reset） | 未开始 |
-| 4 | 分支与合并（含冲突实战） | 未开始 |
-| 5 | 看历史（log / show / diff / blame） | 未开始 |
-| 6 | 远程与协作（remote / push / pull / clone） | 未开始 |
-| 7 | 工具箱（stash / tag / revert / rebase） | 未开始 |
-| 8 | 固化习惯（.gitignore / 对话历史 / tag） | 未开始 |
+| 阶段 | 主题                                             | 状态   |
+| ---- | ------------------------------------------------ | ------ |
+| 0    | 环境与身份（version / config）                   | 完成   |
+| 1    | 第一次提交（init / status / add / commit / log） | 完成   |
+| 2    | 日常循环（改文件再提交）                         | 未开始 |
+| 3    | 后悔药（restore / amend / reset）                | 未开始 |
+| 4    | 分支与合并（含冲突实战）                         | 未开始 |
+| 5    | 看历史（log / show / diff / blame）              | 未开始 |
+| 6    | 远程与协作（remote / push / pull / clone）       | 未开始 |
+| 7    | 工具箱（stash / tag / revert / rebase）          | 未开始 |
+| 8    | 固化习惯（.gitignore / 对话历史 / tag）          | 未开始 |
 
 ## 每步记录模板
 
@@ -42,18 +42,21 @@
 # 附录 A 阶段 0：环境与身份
 
 ## 步骤 0.1 确认 git 版本
+
 - 命令：`git --version`
 - 结果：`git version 2.43.0`
 - 原理：2.43 支持 switch / restore 等现代命令，教程按现代写法。
 - 自检：能打印 `git version` 开头的一行。
 
 ## 步骤 0.2 查看全局配置
+
 - 命令：`git config --global --list`
 - 结果：已有 user.name 与 user.email，以及 VS Code 装的 credential.helper。
 - 常见坑：长输出会进分页器，界面底部出现 `(END)` 时按 q 退出；可用 `--no-pager` 避开。
 - 常见坑：一条配置都没有时它无输出且返回非 0，这不叫报错。
 
 ## 步骤 0.3 核对 user.email
+
 - 命令：`git config --global user.email | wc -c`
 - 结果：18（干净的 QQ 邮箱 17 字符 + 1 个换行）。
 - 原理：user.email 是每条提交的作者签名，写错则平台认不出作者，且只能重写历史才能修。
@@ -61,7 +64,66 @@
 - 常见坑：终端内容粘贴到别处可能被自动转义（如 `$*` 显示成转义形式），别靠眼睛判断，用 wc -c 这类数字指标。
 
 ## 步骤 0.4 设定默认分支名
+
 - 命令：`git config --global init.defaultBranch main`
 - 结果：无输出 = 成功。
 - 原理：只影响以后新建仓库的初始分支名，不改动任何已有仓库。
 - 通用规律：git 的设置类命令成功时沉默（没有消息就是好消息）。
+
+---
+
+# 附录 B 阶段 1：第一次提交
+
+## 步骤 1.1 建立仓库
+
+- 命令：`git init`
+- 结果：`Initialized empty Git repository in /home/wsa/git练习/.git/`，没有 master 提示。
+- 原理：在当前目录生成隐藏的 `.git/`，仓库的全部历史都在里面；删掉它等于删掉全部历史（工作区文件还在）。
+- 自检：zsh 提示符出现 `git:(main)`，说明默认分支名配置生效。
+
+## 步骤 1.2 提交前的基线
+
+- 命令：`git status`
+- 结果：`On branch main` / `No commits yet` / `nothing to commit`。
+- 原理：git 把文件分成三个区 —— 工作区、暂存区、仓库；status 就是三个区的对照表。
+- 常见坑：status 永远不改动任何东西，可以当仪表盘随便敲。
+
+## 步骤 1.3 写下教程文档
+
+- 命令：`cat > /home/wsa/git练习/git教程.md <<'GITDOC'`，正文粘贴到结束标记为止，最后单独一行 `GITDOC`。
+- 原理：`>` 是覆盖写入，`>>` 是追加；`<<'标记'` 是 heredoc，标记上的单引号让内容原样落地，不做变量替换。
+- 常见坑：必须敲到最后单独一行的结束标记才会执行；想反悔按 Ctrl+C，此处不要按 q。
+
+## 步骤 1.4 进暂存区并审清单
+
+- 命令：`git add /home/wsa/git练习/git教程.md`
+- 命令：`git status` → `Changes to be committed:` 区块里出现 `new file: git教程.md`
+- 命令：`git diff --cached --stat` → `1 file changed, 67 insertions(+)`
+- 原理：add 把文件此刻的内容做成快照放进暂存区；add 之后再改文件，新改动不会自动进暂存区。
+- 原理：三种 diff —— `git diff` 工作区比暂存区、`git diff --cached` 暂存区比上次提交、`git diff HEAD` 工作区比上次提交。
+- 常见坑：不要用 `git add .` 一把梭，先学会明确指名道姓地 add。
+- 自检：提交前用 --stat 的数字核对内容完整性（本次 67 行等于原稿行数）。
+
+## 步骤 1.5 第一个提交
+
+- 命令：`git commit -m "docs: 建立 git 教程骨架与阶段 0 记录"`
+- 结果：`[main (root-commit) c969115] ... 1 file changed, 67 insertions(+) create mode 100644 git教程.md`
+- 原理：`(root-commit)` 是根提交（没有父提交）；`c969115` 是提交指纹，完整 40 位；`100644` 是文件权限模式。
+- 常见坑：忘记 -m 会被扔进 vim：按 i 输入，Esc 后 `:wq` 保存退出，或 `:q!` 放弃；不会损坏任何东西。
+- 提交信息规矩：第一行简短说清做了什么，中文即可；docs、feat、fix 这类前缀可选；别写「更新一下」这种没信息量的。
+
+## 步骤 1.6 看历史
+
+- 命令：`git log --oneline` → 一行：短哈希加提交信息。
+- 命令：`git log -1` → 完整格式：完整哈希、`(HEAD -> main)`、Author、Date、提交信息。
+- 原理：`HEAD` 是「我现在站在哪」的指针；`HEAD -> main` 表示 HEAD 指向 main 分支，main 指向最新提交。
+- 常见坑：输出超过一屏时 less 会接管屏幕，按 q 退出后内容从视野里消失，看起来像什么都没输出。
+- 根治：`git config --global core.pager "less -FRX"`（F 不足一屏不接管、R 保留颜色、X 退出不清屏）。
+
+## 阶段 1 小结：今天新增的五个坑
+
+1. 长输出会进分页器：底部出现 `(END)` 或内容「消失」，先按 q 退出；根治见上面那条 core.pager 配置。
+2. 无输出即成功：git 的设置类命令成功时沉默，不代表报错。
+3. 粘贴会骗人：终端内容复制到别处可能被自动转义（空格变实体、符号被加反斜杠），判断内容优先用数字指标，如 `wc -c`、`git diff --cached --stat`。
+4. 非 ASCII 文件名默认显示成八进制转义；`git config --global core.quotePath false` 可以关掉，只影响显示。
+5. 提交前审 diff：如果 diff 里出现我根本没打算改的改动，多半是编辑器「保存时格式化」干的（表格补齐、标题后补空行）。这类噪音让 diff 变脏，要么接受它并在提交信息里写明，要么先关掉自动格式化。
