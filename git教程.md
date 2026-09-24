@@ -217,3 +217,13 @@
 
 - 坑 8：`git restore <文件>` 和 `rm` 都不会问你确认，也没有 undo；带 --staged 的那一半才是安全的。
 - 坑 9：reset --hard 是唯一会吃掉工作区内容的 reset 模式，用之前先确认工作区干净。
+
+## 常用命令速查
+
+- 看状态：`git status`
+- 看改动：`git diff` 和 `git diff --cached`
+- 暂存：`git add 文件`
+- 提交：`git commit -m "说明"`
+- 看历史：`git log --oneline --decorate --graph`
+- 后悔药：`git restore`、`git restore --staged`、`git commit --amend`
+- 掉东西了：`git reflog`
