@@ -31,3 +31,11 @@
 - 关键教训：冲突解决后要「标记清零 + 结构核对」双重验收；本次多留一个空行把列表拆成两段，靠 wc -l 抓出来，再用 git commit --amend --no-edit 并进合并提交。
 - 收尾状态：git log --oneline 共 10 条（含两条分支上的提交），git教程.md 303 行。
 - 2026-09-28：在第二台（clone 副本）里追加，用来制造远端领先。
+
+## 2026-09-28 阶段 6：远程与协作（真 GitHub）
+
+- 产出：本地仓库接到 https://github.com/b0x0utl1ne/git-practice.git（公开仓库），全过程记进附录 G。
+- 踩坑：VS Code 凭据助手指向 /tmp 里上一次会话的过期文件，HTTPS 认证失败（GitHub 已禁用密码认证）；改用 SSH 私钥 id_ed25519，公钥加到 GitHub 后 ssh -T 通过。
+- 关键实验：clone 出 /home/wsa/git练习-第二台 冒充同事机器，两端各提交一笔制造 push 被拒（! [rejected] fetch first），再 fetch 看快照前移、status 显示 diverged、pull 合并、push 成功。
+- 新增决策：全局设 pull.rebase false，分叉时用 merge，不改写已有提交的哈希。
+- 收尾状态：本地与远端一致，教程 429 行。
