@@ -24,7 +24,7 @@
 | 3    | 后悔药（restore / amend / reset）                | 完成   |
 | 4    | 分支与合并（含冲突实战）                         | 完成   |
 | 5    | 看历史（log / show / diff / blame）              | 完成   |
-| 6    | 远程与协作（remote / push / pull / clone）       | 未开始 |
+| 6    | 远程与协作（remote / push / pull / clone）       | 完成   |
 | 7    | 工具箱（stash / tag / revert / rebase）          | 未开始 |
 | 8    | 固化习惯（.gitignore / 对话历史 / tag）          | 未开始 |
 
@@ -352,3 +352,79 @@
 - 坑 14：-S 与 -G 的值以 - 开头时必须粘连写（-S值）。
 - 坑 15：合并提交的 `git show` 可能是空的，不代表这次合并没改东西。
 - 2026-09-28：在第一台追加，用于制造一次 push 被拒绝。
+
+---
+
+# 附录 G 阶段 6：远程与协作（GitHub）
+
+## 步骤 6.1 接一个远端
+
+- 命令：`git remote add origin https://github.com/b0x0utl1ne/git-practice.git`，再用 `git remote -v` 核对。
+- 原理：remote 只是给一个地址起名字，origin 是惯例叫法；fetch 与 push 可以指向不同地址，所以会显示两行。
+- 常见坑：建远端仓库时不要勾 Add README、Add .gitignore、Choose a license，否则远端先有一笔提交，首次 push 必然被拒。
+
+## 步骤 6.2 HTTPS 认证为什么失败
+
+- 现象：push 时报 `Cannot find module '/tmp/vscode-remote-containers-<uuid>.js'`，随后退回问用户名与密码，GitHub 回 `Password authentication is not supported`。
+- 原因：全局配置里的 credential.helper 指向 VS Code 上一次远程会话留下的临时文件，那个 uuid 随会话变化，文件早已被清掉。
+- 结论：终端里的 HTTPS 认证不可靠时不要猜密码，直接换 SSH；GitHub 早已不接受账号密码认证。
+
+## 步骤 6.3 用 SSH 代替 HTTPS
+
+- 命令：`cat ~/.ssh/id_ed25519.pub`，把整行加到 GitHub 的 Settings 里 SSH and GPG keys 处。
+- 原理：公钥（.pub）可以公开，私钥（id_ed25519）绝不能外传；私钥权限必须是 600，否则 ssh 会拒绝使用。
+- 命令：`ssh -T git@github.com`
+- 原理：首次连接要核对主机指纹（GitHub 官方 ED25519 为 SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU），确认后输入 yes，指纹写进 known_hosts。
+- 常见坑：看到 `Hi 用户名! You've successfully authenticated, but GitHub does not provide shell access.` 就是成功，后半句不是报错。
+- 命令：`git remote set-url origin git@github.com:b0x0utl1ne/git-practice.git`
+- 原理：SSH 地址里的 git@ 是固定用户名不是账号名，GitHub 靠公钥识别你是谁。
+
+## 步骤 6.4 首次推送与跟踪关系
+
+- 命令：`git push -u origin main`
+- 现象：Enumerating、Counting、Compressing 一堆，加 `* [new branch] main -> main`，最后 `branch 'main' set up to track 'origin/main'`。
+- 原理：-u 把本地分支与远端分支绑成跟踪关系，之后 push 与 pull 不用再写参数；`[new branch]` 表示远端原本没有这条分支，之后的推送显示 `旧哈希..新哈希` 表示在已有分支上向前推进。
+- 原理：push 送的是提交对象不是工作区文件，未提交的改动推不上去；git 只送远端没有的对象（首次 36 个对象 14 KiB，之后一笔只推 4 个对象 511 字节）。
+
+## 步骤 6.5 远程跟踪分支与离线的 git
+
+- 命令：`git branch -a` 会看到 remotes/origin/main；`git log --oneline --decorate -3` 会看到 `(HEAD -> main, origin/main)` 挤在同一行。
+- 原理：origin/main 是你最后一次联网时远端状态的只读快照，不是你本地的工作分支，切不过去、也不该在上面干活。
+- 常见坑：status 里的 up to date、ahead by N、have diverged 三种措辞，描述的都是「本地 main 与你本地那份快照」的关系；快照过期，措辞就过期。git 从不偷偷联网，推之前先 fetch。
+
+## 步骤 6.6 克隆
+
+- 命令：`git clone git@github.com:b0x0utl1ne/git-practice.git /home/wsa/git练习-第二台`
+- 原理：clone 等于 init 加 remote add 加 fetch 加 checkout 四件事一次做完，所以克隆出来的仓库天生带 origin 和完整历史。
+
+## 步骤 6.7 push 被拒绝
+
+- 命令：两端各提交一笔后执行 `git push`
+- 现象：`! [rejected] main -> main (fetch first)` 加一段 hint。
+- 原理：远端有你没有的提交，git 拦住你是为了不覆盖别人的工作；括号里的原因词（fetch first、non-fast-forward、stale info）比整段 hint 更有信息量。
+- 常见坑：此时千万不要 `git push -f`，那会把远端那笔从 main 上踢掉；真需要重写历史重推时用 `git push --force-with-lease`。
+
+## 步骤 6.8 fetch 与 pull 的区别
+
+- 命令：`git fetch`
+- 现象：输出 `2a2c400..f9b2533 main -> origin/main`，只有快照前移；你的 main、工作区、本地提交都不动。
+- 命令：`git status` 此时才改口成 `Your branch and 'origin/main' have diverged, and have 1 and 1 different commits each`。
+- 原理：fetch 只同步信息；pull 等于 fetch 加 merge，会改动工作区并生成双亲合并提交。
+
+## 步骤 6.9 分叉时 pull 要先表态
+
+- 现象：新版 git 直接 fatal，提示 `Need to specify how to reconcile divergent branches`，并列出三种可选策略。
+- 原理：merge 会多加一个接头提交、不改已有哈希；rebase 会把本地提交重放到远端之上、会改哈希，等于改写历史。
+- 命令：`git config --global pull.rebase false` 选择 merge 作为默认，等于回到 git 2.27 之前的老默认；只想临时换可用 `git pull --rebase`、`--no-rebase`、`--ff-only`。
+
+## 步骤 6.10 完整闭环
+
+- 顺序：push 被拒，git fetch，git status 看到 diverged，git pull 合并，git push 成功。
+- 结果：`f9b2533..0e44f50 main -> main`，图形变成双亲合并提交，`(HEAD -> main, origin/main)` 挤在同一行。
+- 常见坑：`git log --graph` 不加 `--all` 只走 HEAD 能到达的提交，远端那条线（不是你的祖先）根本不显示，容易误以为没分叉。
+
+## 阶段 6 小结：新增的坑
+
+- 坑 16：status 与 log 全是离线判断，快照过期会给出误导的 up to date；推之前先 fetch。
+- 坑 17：`git log --graph` 必须配 `--all` 才能看到不在 HEAD 祖先链上的分支线。
+- 坑 18：VS Code 凭据助手的路径随会话变化（指向 /tmp 的过期文件），终端里 HTTPS 认证会失败；长期方案用 SSH，而 `ssh -T git@github.com` 的成功输出长得像报错。
