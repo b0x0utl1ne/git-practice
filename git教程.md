@@ -224,6 +224,6 @@
 - 看改动：`git diff` 和 `git diff --cached`
 - 暂存：`git add 文件`
 - 提交：`git commit -m "说明"`
-- 看历史：`git log --oneline --decorate --graph`
+- 看历史：`git log --oneline --decorate --graph --all`
 - 后悔药：`git restore`、`git restore --staged`、`git commit --amend`
 - 掉东西了：`git reflog`
