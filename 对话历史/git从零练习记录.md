@@ -38,4 +38,4 @@
 - 踩坑：VS Code 凭据助手指向 /tmp 里上一次会话的过期文件，HTTPS 认证失败（GitHub 已禁用密码认证）；改用 SSH 私钥 id_ed25519，公钥加到 GitHub 后 ssh -T 通过。
 - 关键实验：clone 出 /home/wsa/git练习-第二台 冒充同事机器，两端各提交一笔制造 push 被拒（! [rejected] fetch first），再 fetch 看快照前移、status 显示 diverged、pull 合并、push 成功。
 - 新增决策：全局设 pull.rebase false，分叉时用 merge，不改写已有提交的哈希。
-- 收尾状态：本地与远端一致，教程 429 行。
+- 收尾状态：本地与远端一致，教程 430 行。
