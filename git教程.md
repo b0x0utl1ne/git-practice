@@ -25,8 +25,8 @@
 | 4    | 分支与合并（含冲突实战）                         | 完成   |
 | 5    | 看历史（log / show / diff / blame）              | 完成   |
 | 6    | 远程与协作（remote / push / pull / clone）       | 完成   |
-| 7    | 工具箱（stash / tag / revert / rebase）          | 未开始 |
-| 8    | 固化习惯（.gitignore / 对话历史 / tag）          | 未开始 |
+| 7    | 工具箱（stash / tag / revert / rebase）          | 完成   |
+| 8    | 固化习惯（.gitignore / 对话历史 / tag）          | 完成   |
 
 ## 每步记录模板
 
@@ -475,3 +475,87 @@
 - 坑 19：revert 也会冲突，冲突块可能远大于实际改动；进行中的 revert 必须用 --continue 或 --abort 收尾，不能挂着。
 - 坑 20：`wc -l` 数换行符不是数行数，要和 `awk 'END{print NR}'` 对比才知道末尾有没有换行；diff 里的 `No newline at end of file` 就是这个信号。
 - 坑 21：VS Code 在 Markdown 列表末尾按回车会自动续 `- `；另外 `git push` 默认不推送标签。
+
+---
+
+# 附录 I 阶段 8：.gitignore 与忽略规则
+
+## 步骤 8.1 先造五个「不该进仓库」的现场
+
+- 命令：在仓库里造假文件 —— `build/output.txt`（构建产物）、`debug.log`（日志）、`important.log`（要保留的例外日志）、`token.txt`（假密钥，内容写着 `token=abcdef123456`）、`data/raw.csv`（数据集）。
+- 目的：把构建产物、日志、例外日志、敏感文件、数据集这五类对象一次摆齐，因为它们的规则写法各不相同。
+- 命令：故意误提交一次 —— `git add /home/wsa/git练习/data/raw.csv`、`git commit -m "chore: 模拟一次误提交（把数据文件提进了仓库）"`、`git push`。
+- 原理：忽略规则最常见的用法就是「先错一次再补规则」，因为规则只对未跟踪文件生效；已经进库的文件必须另行补救，这就是后面 `git rm --cached` 的铺垫。
+
+## 步骤 8.2 写 .gitignore
+
+- 命令：`cat > /home/wsa/git练习/.gitignore <<'GITDOC'` 起头，写 5 组规则，`GITDOC` 收尾，共 14 行。
+- 内容：`build/`、`*.log`、`!important.log`、`token.txt`、`data/`，每组上面配一行中文注释。
+- 自检：`wc -l /home/wsa/git练习/.gitignore` 得到 14。
+
+### 忽略规则常见写法（速查）
+
+| 写法 | 含义 |
+|---|---|
+| `build/` | 只匹配目录；命中后整个子树都不跟踪 |
+| `*.log` | 匹配任意层级的同名文件 |
+| `/token.txt` | 斜杠开头 = 只匹配仓库根目录下这一处 |
+| `data/**` | `**` 表示递归任意层 |
+| `!important.log` | 重新包含：把前面已被忽略的再捞回来 |
+| `# 注释` | 井号开头是注释（想写真的井号用 `\#`） |
+
+- 原理：同一个文件被多条规则命中时，**最后一条命中的规则说了算** —— 所以 `!` 例外必须写在对应的忽略规则**后面**，写前面等于没写。
+- 常见坑：例外规则有硬限制 —— 父目录被排除时，没法再把父目录里的文件捞回来。`build/` 配 `!build/keep.txt` 无效；要写成 `build/*` 配 `!build/keep.txt`（保留目录本身、只排除目录内容）。
+- 常见坑：斜杠的位置决定作用范围，写错会「看似忽略成功、实际漏网」；写完一律用 `git check-ignore -v` 验证，别靠眼睛。
+
+## 步骤 8.3 验收一：status 与 status --ignored
+
+- 命令：`git status`
+- 现象：只剩 `.gitignore` 与 `important.log` 两个未跟踪文件；`build/`、`debug.log`、`token.txt` 都消失了。
+- 命令：`git status --ignored`
+- 现象：多出一段 `Ignored files:`，里面有 `build/`、`debug.log`、`token.txt`；`data/` **不在其中**。
+- 原理：`git status` 默认把被忽略的文件藏起来（藏起来才干净），要看它们必须显式加 `--ignored`。
+- 常见坑：`data/` 不在忽略列表里不是规则写错，而是 `data/raw.csv` 已被跟踪 —— 已跟踪文件永远不会出现在忽略列表里，这正是步骤 8.5 要讲的坑。
+- 自检：`git status --ignored` 的 Ignored files 段恰好 3 项。
+
+## 步骤 8.4 验收二：git check-ignore -v 查「是谁在管它」
+
+- 命令：`git check-ignore -v /home/wsa/git练习/build/output.txt /home/wsa/git练习/debug.log /home/wsa/git练习/token.txt /home/wsa/git练习/important.log`
+- 现象：每个路径一行，格式是 `规则文件:行号:模式 <TAB> 路径`；`important.log` 命中的是 `!important.log` 这条**否定规则**，提示符出现 `✗`（退出码 1），属于正常。
+- 原理：`-v` 告诉你「这条路径是被哪一行规则命中的」，是排查忽略问题的第一工具；被否定规则捞回时退出码为 1，用来区分「被忽略」与「被例外捞回」。
+- 常见坑：退出码 1 有两层含义（没命中任何规则 / 命中否定规则），所以**必须看输出**，不能只看退出码。
+- 自检：4 个路径各打出一行 —— `build/output.txt` 命中 `build/`，`debug.log` 命中 `*.log`，`token.txt` 命中 `token.txt`，`important.log` 命中 `!important.log`。
+
+## 步骤 8.5 关键坑：忽略规则对已跟踪文件完全无效
+
+- 命令：`echo "2026-09-28,1,2,3" >> /home/wsa/git练习/data/raw.csv`，随后 `git status`。
+- 现象：`data/raw.csv` 照样出现在 `Changes not staged for commit` 的 `modified:` 行里 —— 尽管 `data/` 规则明明白白写在 `.gitignore` 第 14 行。
+- 原理：`.gitignore` 只在「要不要把未跟踪文件纳入版本控制」那一刻起作用；文件一旦进过索引，git 就一直跟踪它，忽略规则对它失效。
+- 常见坑：以为加了 .gitignore 就等于把密钥、数据从仓库里摘掉了 —— 这是最贵的误解。规则是**向前看**的，对历史提交零作用。
+
+## 步骤 8.6 补救：git rm --cached 与后续验收
+
+- 命令：`git rm --cached /home/wsa/git练习/data/raw.csv`
+- 现象：打印 `rm 'data/raw.csv'`；`git status` 出现 `deleted: data/raw.csv`（在 Changes to be committed 里），而 `ls -b` 与 `cat` 证明磁盘文件完好、追加的那行也在。
+- 原理：`--cached` 只对索引动手，把这条记录从跟踪清单里划掉，工作区文件原地不动；不加 `--cached` 的 `git rm` 会连磁盘文件一起删。
+- 命令：把 `.gitignore`、`important.log` 一起 `git add`，用 `git status` 与 `git diff --cached --stat` 验收，实际得到 `3 files changed, 15 insertions(+), 1 deletion(-)`（`new file: .gitignore`、`deleted: data/raw.csv`、`new file: important.log`）。
+- 命令：`git commit -m "chore: 补 .gitignore 并停止跟踪 data/raw.csv（本地文件保留）"`，再 `git push`。
+- 验收：`git ls-tree HEAD --name-only` 里不再有 `data/raw.csv`；`git check-ignore -v /home/wsa/git练习/data/raw.csv` 现在命中 `.gitignore:14:data/`（步骤 8.4 时它还是「查不到、退出码 1」）。
+- 原理：`important.log` 故意提交进去，因为它是 `!important.log` 这条例外规则的活证据 —— 一个命中 `*.log` 却被保留、能正常入库的文件，比文字说明更直观。
+- 常见坑：补救 ≠ 消灭历史。`4344bc3` 里那个文件仍在历史中，仓库体积不会变小；真要瘦身得用 `git filter-repo` 或 BFG 重写历史（改写相关提交的哈希、必须强推、协作者要重新 clone，高风险）。
+- 结论：大文件与密钥「防」的成本近乎零（第一次 add 之前就写好规则），「治」的代价高昂（重写历史）；大文件确实必须入库时另走 Git LFS 配 `.gitattributes`。
+
+## 三种忽略范围：仓库内 / 本机 / 全局
+
+- `.gitignore`：进仓库、与所有人共享，放团队约定的忽略（构建产物、依赖目录）。
+- `.git/info/exclude`：不进仓库、只对本仓库本人生效，适合「只有我这台机器的编辑器会吐出来」的文件。
+- 全局：`git config --global core.excludesFile ~/.gitignore_global`，对所有仓库生效，适合系统与编辑器垃圾（`.DS_Store`、`.idea/`、`*.swp`）。
+- 命令：确实要提交一个被忽略的文件时用 `git add -f <文件>` 强制加入，`git status` 的提示里就写着这一条。
+- 常见坑：三种范围是**叠加**关系而不是覆盖；排查「为什么这个文件被忽略了」，`git check-ignore -v` 会把仓库内、本机、全局三处的规则一起报出来。
+
+## 阶段 8 小结：新增的坑
+
+- 坑 22：`.gitignore` 只对未跟踪文件生效；已跟踪文件的改动照样进 `git status`，必须 `git rm --cached`（停止跟踪、保留文件）或 `git rm`（连磁盘文件一起删）。
+- 坑 23：`git rm --cached` 只是停止跟踪，历史里的那份文件与仓库体积都不会消失；真瘦身要 `git filter-repo` 或 BFG 重写历史，代价高、要强推。
+- 坑 24：`git check-ignore` 命中否定规则（`!`）时退出码是 1，但输出里仍会打印那条规则；退出码 1 不等于「没被忽略」，必须看输出。
+- 坑 25：`git status` 默认不列被忽略的文件，得加 `--ignored` 才看得见，否则容易误判「规则没生效」。
