@@ -427,3 +427,51 @@
 - 坑 16：status 与 log 全是离线判断，快照过期会给出误导的 up to date；推之前先 fetch。
 - 坑 17：`git log --graph` 必须配 `--all` 才能看到不在 HEAD 祖先链上的分支线。
 - 坑 18：VS Code 凭据助手的路径随会话变化（指向 /tmp 的过期文件），终端里 HTTPS 认证会失败；长期方案用 SSH，而 `ssh -T git@github.com` 的成功输出长得像报错。
+
+---
+
+# 附录 H 阶段 7：stash、revert 与 tag
+
+## 步骤 7.1 stash：把未提交的改动收进抽屉
+
+- 命令：`git stash`
+- 现象：`Saved working directory and index state WIP on main: <最新提交哈希> <提交信息>`；随后 `git status` 变干净、文件内容回到 HEAD。
+- 原理：stash 把未提交的改动打包存进本地的一个栈（抽屉），工作区立刻回到 HEAD 状态，方便你切分支、拉取或去救火。
+- 命令：`git stash list` 查看抽屉内容（`stash@{0}` 是最新一条）；`git stash pop` 把改动拿回来并删掉抽屉记录（等于 apply 加 drop）；`git stash apply` 只应用、抽屉里留一份。
+- 常见坑：stash 只收「已被跟踪文件」的改动，未跟踪的新文件要 `git stash -u` 才会收。
+- 常见坑：stash 不进历史、不推送、只在本机，换台电脑看不到；它只是临时纸条，不是存档，长期要留就提交。
+- 常见坑：收尾有两种，别混：`git stash drop` 只删抽屉记录（不动工作区）；`git restore <文件>` 丢弃工作区里已经拿出来的改动；`git stash clear` 清空全部抽屉，危险。
+
+## 步骤 7.2 revert：撤销一笔已经推送出去的提交
+
+- 命令：`git revert --no-edit 0b6560b`
+- 现象：生成一笔新提交，信息是 git 自动写的 `Revert "原文"`；结果 `1 file changed, 1 deletion(-)`。
+- 原理：revert 把指定提交的改动「反向应用」一遍并记成一笔新提交，**原提交仍留在历史里**，所以它不需要 force push，别人 pull 一下就看到撤销生效。
+- 对照：reset 移动分支指针、让提交从未发生（改写历史，只适合没推送的）；revert 新增反向提交、历史继续往前，不改写历史。
+- 命令：revert 中途冲突后，先手工解决再 `git add`，然后 `git revert --continue --no-edit` 完成；`git revert --skip` 跳过这笔；`git revert --abort` 放弃整个操作回到动手前。
+- 常见坑：revert 也会冲突（本次就发生了），而且**冲突块可能远大于实际改动**：本次只想删 1 行，git 却把文件末尾 78 行都划进冲突区，因为「文件末尾这一段两边都动过」。
+- 常见坑：一边为空的冲突块里，编辑器按钮特别容易点错（Accept Incoming 会把整段内容删掉），这种情况必须手工编辑。
+- 人的判断：当冲突块远大于改动本身时，资深用户常选 `git revert --abort` 加手工删掉那行再加普通提交 —— 少一次冲突解决、少一次风险。
+
+## 步骤 7.3 末尾换行与 wc -l 的真实语义
+
+- 现象：`wc -l` 报 428，但内容明摆着是 429 行；`git diff` 里出现 `No newline at end of file`。
+- 原理：`wc -l` 数的是**换行符个数**，不是内容行数；`awk 'END{print NR}'` 数的是内容行数。**两者相等才说明文件末尾有换行**（标准状态），差 1 就是最后一行没换行。
+- 常见坑：文件末尾丢换行会让 diff 多出一对「删旧行加新行」，看起来像你改了一行，其实只是缺了个尾换行 —— 这是「莫名多出一行差异」的经典来源。
+- 修正：让最后一行以换行结束即可；VS Code 打开设置里的 `Files: Insert Final Newline` 可以自动保证。
+- 常见坑：在 VS Code 里对 Markdown 列表项末尾按回车，它会自动续一个 `- `，在文件末尾操作就会多出一个空列表项（本次真发生了，多花了一笔提交才清掉）。
+
+## 步骤 7.4 tag：给提交起个人类可读的名字
+
+- 命令：`git tag -a v0.1 -m "git 练习教程 v0.1：阶段 0 到 7 完成"`
+- 原理：轻量标签只是一个指向提交的文件；附注标签（-a）会额外记录创建者、日期和说明，等于给版本盖章，团队里推荐用附注标签。
+- 命令：`git tag` 列出所有标签；`git show v0.1` 看标签元信息和它指向的提交。
+- 原理：分支会随提交移动，标签**不会** —— 它就是「某个时刻那个提交」的固定名字，所以用来标记发布版本。
+- 常见坑：`git push` **默认不推送标签**，必须单独 `git push --tags` 或 `git push origin v0.1`；否则本地有标签、远端没有。
+- 常见坑：删标签要分两步，`git tag -d v0.1` 删本地，`git push --delete origin v0.1` 删远端；直接切到某个标签上工作会进入 detached HEAD 状态，只适合临时查看代码。
+
+## 阶段 7 小结：新增的坑
+
+- 坑 19：revert 也会冲突，冲突块可能远大于实际改动；进行中的 revert 必须用 --continue 或 --abort 收尾，不能挂着。
+- 坑 20：`wc -l` 数换行符不是数行数，要和 `awk 'END{print NR}'` 对比才知道末尾有没有换行；diff 里的 `No newline at end of file` 就是这个信号。
+- 坑 21：VS Code 在 Markdown 列表末尾按回车会自动续 `- `；另外 `git push` 默认不推送标签。
