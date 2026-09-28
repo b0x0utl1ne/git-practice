@@ -47,3 +47,13 @@
 - revert 实战：撤销已推送的 0b6560b，中途撞上冲突（冲突块 78 行、实际只删 1 行），手工解决后 git revert --continue 完成，生成 66dd404 并直接 push，全程没用 force。
 - 收尾细节：末尾换行丢失让 wc -l 报 428 而真实内容 429 行；补回换行、再删掉 VS Code 自动续出的空列表项，共两笔小提交（86759f1、345ba8f）。
 - 收尾状态：教程 477 行，本地与远端一致。
+
+## 2026-09-28 阶段 8：.gitignore 与忽略规则
+
+- 产出：附录 I 写进 git教程.md；学会 .gitignore 语法与优先级、status --ignored、check-ignore -v、git rm --cached。
+- 现场：造假文件 build/output.txt、debug.log、important.log（例外演示）、token.txt（假 token）、data/raw.csv，并故意把 data/raw.csv 提交推送（4344bc3），再补规则补救。
+- 关键实验：补上 14 行 .gitignore 后 status 只剩 .gitignore 与 important.log；status --ignored 列出 build/、debug.log、token.txt，而 data/ 不在其中（因为已被跟踪）。
+- 关键教训：.gitignore 只对未跟踪文件生效，对已跟踪文件完全无效（往 data/raw.csv 追加一行照样显示 modified）；补救要用 git rm --cached，只摘索引、不删磁盘文件。
+- 关键教训：补救不等于消灭历史，4344bc3 里的文件仍在历史中、仓库体积不减小；真瘦身要 git filter-repo 或 BFG 重写历史。
+- 顺手修正：阶段 7 的进度表漏改（提交信息写了「并更新进度表」，但表里第 7 行仍是未开始），本次一起补上并在提交信息里注明。
+- 收尾状态：教程 561 行（附录 A 到 I 共 9 篇），进度表阶段 0 到 8 全部完成，本地与远端一致（337683c）。
