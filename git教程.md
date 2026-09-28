@@ -427,3 +427,4 @@
 - 坑 16：status 与 log 全是离线判断，快照过期会给出误导的 up to date；推之前先 fetch。
 - 坑 17：`git log --graph` 必须配 `--all` 才能看到不在 HEAD 祖先链上的分支线。
 - 坑 18：VS Code 凭据助手的路径随会话变化（指向 /tmp 的过期文件），终端里 HTTPS 认证会失败；长期方案用 SSH，而 `ssh -T git@github.com` 的成功输出长得像报错。
+- 
