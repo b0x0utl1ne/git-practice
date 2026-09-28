@@ -39,3 +39,11 @@
 - 关键实验：clone 出 /home/wsa/git练习-第二台 冒充同事机器，两端各提交一笔制造 push 被拒（! [rejected] fetch first），再 fetch 看快照前移、status 显示 diverged、pull 合并、push 成功。
 - 新增决策：全局设 pull.rebase false，分叉时用 merge，不改写已有提交的哈希。
 - 收尾状态：本地与远端一致，教程 430 行。
+
+## 2026-09-28 阶段 7：stash、revert 与 tag
+
+- 产出：附录 H 写进 git教程.md；学会 stash（抽屉）、revert（撤销已推送的提交）、tag（版本标签）。
+- stash 实验：往教程追加一行、git stash 收走（工作区变干净）、stash list 与 pop 拿回来，最后用 git restore 丢掉 —— 抽屉用完即清，不留历史包袱。
+- revert 实战：撤销已推送的 0b6560b，中途撞上冲突（冲突块 78 行、实际只删 1 行），手工解决后 git revert --continue 完成，生成 66dd404 并直接 push，全程没用 force。
+- 收尾细节：末尾换行丢失让 wc -l 报 428 而真实内容 429 行；补回换行、再删掉 VS Code 自动续出的空列表项，共两笔小提交（86759f1、345ba8f）。
+- 收尾状态：教程 477 行，本地与远端一致。
