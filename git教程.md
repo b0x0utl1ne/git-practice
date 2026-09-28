@@ -22,7 +22,7 @@
 | 1    | 第一次提交（init / status / add / commit / log） | 完成   |
 | 2    | 日常循环（改文件再提交）                         | 完成   |
 | 3    | 后悔药（restore / amend / reset）                | 完成   |
-| 4    | 分支与合并（含冲突实战）                         | 未开始 |
+| 4    | 分支与合并（含冲突实战）                         | 完成   |
 | 5    | 看历史（log / show / diff / blame）              | 未开始 |
 | 6    | 远程与协作（remote / push / pull / clone）       | 未开始 |
 | 7    | 工具箱（stash / tag / revert / rebase）          | 未开始 |
@@ -227,3 +227,77 @@
 - 看历史：`git log --oneline --decorate --graph --all`
 - 后悔药：`git restore`、`git restore --staged`、`git commit --amend`
 - 掉东西了：`git reflog`
+
+---
+
+# 附录 E 阶段 4：分支、合并与冲突
+
+## 步骤 4.1 看有哪些分支
+
+- 命令：`git branch -a`
+- 原理：分支就是 .git/refs/heads/ 下的一个小文件，内容是一行 40 位哈希；`-a` 连远程分支一起列。
+- 常见坑：`*` 表示当前所在分支；不加 `-a` 只列本地分支。
+
+## 步骤 4.2 建分支并切过去
+
+- 命令：`git switch -c feature/outline`
+- 原理：`-c` 等于「建分支 + 切过去」两步合一；新分支从当前提交长出来，所以它和 main 一开始指向同一个提交，工作区文件一个字节都不变。
+- 常见坑：老写法 `git checkout -b` 现在被拆成 switch（只管切分支）和 restore（只管改文件）两个专职命令。
+
+## 步骤 4.3 在分支上提交
+
+- 命令：`git add 文件`，再 `git commit -m "docs: 增加常用命令速查小节"`
+- 结果：提交落在 feature/outline 上，main 原地不动 —— 这时是「领先一条」，还不是分叉。
+
+## 步骤 4.4 切回主线，文件内容跟着变
+
+- 命令：`git switch main`
+- 现象：文档从 229 行变回 219 行，分支上写的内容看起来「消失」了。
+- 原理：工作区内容由 HEAD 指向的提交决定；切分支只是换一条时间线，内容没丢，只是不在这条线上。
+
+## 步骤 4.5 快进合并
+
+- 命令：`git merge feature/outline`
+- 结果：`Updating f2de03b..1b9e25f` 加 `Fast-forward`，没有产生合并提交。
+- 原理：main 只是落后、没有分叉，git 把 main 指针直接推到新提交即可。
+- 常见坑：快进合并后历史是一条直线，看不出曾经有过分支；想留下痕迹要用 `git merge --no-ff`。
+
+## 步骤 4.6 删除用完的分支
+
+- 命令：`git branch -d feature/outline`
+- 原理：删掉的只是那个指针文件，提交本身还在历史里。
+- 常见坑：`-d` 在分支还有未合并提交时会拒绝删除；`-D` 强制删，但那些提交仍能用 reflog 找回。
+
+## 步骤 4.7 制造分叉
+
+- 命令：建 fix/speed-a 给那一行加 `--all` 并提交；切回 main；建 fix/speed-b 把同一行去掉 `--decorate` 并提交。
+- 命令：`git log --oneline --decorate --graph --all`
+- 现象：两条并排的历史线，中间出现分叉点 `|/`。
+
+## 步骤 4.8 冲突现场
+
+- 命令：`git switch main`，先 `git merge fix/speed-a`（顺利快进），再 `git merge fix/speed-b`
+- 结果：`CONFLICT (content): Merge conflict in git教程.md`，`git status` 显示 `Unmerged paths` 与 `both modified`。
+- 原理：两边改了同一行的同一位置，git 不替人做决定，于是把两个版本都写进文件并贴上标签。
+- 逃生门：`git merge --abort` 可以一键回到合并前的状态。
+
+## 步骤 4.9 解决冲突
+
+- 命令：`grep -n -A6 '<<<<<<<' /home/wsa/git练习/git教程.md`
+- 现象：三明治结构 —— `<<<<<<< HEAD` 到 `=======` 之间是当前分支的版本，`=======` 到 `>>>>>>> 分支名` 之间是被合并分支的版本。
+- 做法：先想清楚最终该长什么样，手工写成那个结果，再把三行标记删干净。
+- 命令：`git add 文件`（冲突时 add 的含义是「我解决好了」），`git status` 会显示 `All conflicts fixed but you are still merging`，最后 `git commit` 生成有两个父提交的合并提交。
+- 常见坑：合并提交不带 -m 会打开编辑器并用默认信息；想直接接受默认信息用 `git commit --no-edit`。
+
+## 步骤 4.10 冲突解决后的双重验收
+
+- 命令：`grep -c '<<<<<<<' /home/wsa/git练习/git教程.md` 得到 0，确认标记清零。
+- 命令：`wc -l /home/wsa/git练习/git教程.md` 得到 229，确认结构没被改坏。
+- 常见坑：只查标记不够 —— 本次多留了一个空行，把 Markdown 列表拆成了两个列表，靠 wc -l 才抓出来。
+- 修正：删掉多余空行后 `git commit --amend --no-edit` 并进合并提交；amend 会保留双亲，改完要用 git log --graph 再确认一次树形没变。
+
+## 阶段 4 小结：新增的坑
+
+- 坑 10：冲突标记要删干净，但「标记清零」不等于「结构正确」，必须配上 wc -l 或 git diff 一起验收。
+- 坑 11：switch 和 merge 都会改动工作区文件，动手前先确认工作区干净，否则未提交的改动会跟着你跑到另一条分支上。
+- 坑 12：改文件前先看提示符里的分支名；在错误的分支上改东西是分支工作里最常见的事故。
